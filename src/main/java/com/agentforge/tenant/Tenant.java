@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -34,8 +36,9 @@ public class Tenant {
 	@Column(name = "tokens_used", nullable = false)
 	private long tokensUsed;
 
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private String status;
+	private TenantStatus status;
 
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
@@ -50,7 +53,7 @@ public class Tenant {
 		this.tone = tone;
 		this.tokenQuota = tokenQuota;
 		this.tokensUsed = 0;
-		this.status = "ACTIVE";
+		this.status = TenantStatus.ACTIVE;
 		this.createdAt = Instant.now();
 	}
 
@@ -82,7 +85,7 @@ public class Tenant {
 		return tokensUsed;
 	}
 
-	public String getStatus() {
+	public TenantStatus getStatus() {
 		return status;
 	}
 

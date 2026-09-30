@@ -16,6 +16,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 // Extends ResponseEntityExceptionHandler so Spring's own exceptions (404, 405, malformed JSON, ...)
@@ -38,6 +39,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(DuplicateResourceException.class)
 	public ProblemDetail handleDuplicateResource(DuplicateResourceException ex) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+	}
+
+	@ExceptionHandler(UnsupportedFileTypeException.class)
+	public ProblemDetail handleUnsupportedFileType(UnsupportedFileTypeException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 
 	// Fallback for a race between a service's existsBy... check and its insert (two identical requests at once)
@@ -63,6 +69,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			.map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
 			.toList();
 		problem.setProperty("errors", errors);
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+
+	// The exception already carries the correct status (413); override only to add a clear detail message
+	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		ProblemDetail problem = createProblemDetail(ex, status, "Uploaded file is too large", null, null, request);
 		return handleExceptionInternal(ex, problem, headers, status, request);
 	}
 

@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -72,6 +73,8 @@ public class SecurityConfig {
 				.requestMatchers("/api/platform/**")
 				.hasRole("PLATFORM_ADMIN")
 				.requestMatchers("/api/users")
+				.hasRole("TENANT_ADMIN")
+				.requestMatchers(HttpMethod.POST, "/api/documents")
 				.hasRole("TENANT_ADMIN")
 				.anyRequest()
 				.authenticated())

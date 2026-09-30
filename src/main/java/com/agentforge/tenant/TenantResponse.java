@@ -11,7 +11,7 @@ public record TenantResponse(
 		String tone,
 		long tokenQuota,
 		long tokensUsed,
-		String status,
+		TenantStatus status,
 		Instant createdAt) {
 
 	public static TenantResponse from(Tenant tenant) {

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.agentforge.common.InvalidCredentialsException;
 import com.agentforge.tenant.Tenant;
 import com.agentforge.tenant.TenantRepository;
+import com.agentforge.tenant.TenantStatus;
 import com.agentforge.user.User;
 import com.agentforge.user.UserRepository;
 
@@ -56,7 +57,7 @@ public class AuthService {
 
 	private boolean isTenantActive(UUID tenantId) {
 		Optional<Tenant> tenant = tenantRepository.findById(tenantId);
-		return tenant.isPresent() && "ACTIVE".equals(tenant.get().getStatus());
+		return tenant.isPresent() && tenant.get().getStatus() == TenantStatus.ACTIVE;
 	}
 
 }
