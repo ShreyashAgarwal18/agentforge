@@ -1,4 +1,6 @@
 package com.agentforge.auth;
 
-public record LoginResponse(String accessToken, long expiresInSeconds) {
+import java.time.Instant;
+
+public record LoginResponse(String accessToken, Instant expiresAt) {
 }

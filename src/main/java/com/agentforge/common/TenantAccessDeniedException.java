@@ -1,6 +1,6 @@
 package com.agentforge.common;
 
-// TODO: map to HTTP 403 in the global error handler (not built yet)
+// Mapped to HTTP 403 in GlobalExceptionHandler
 public class TenantAccessDeniedException extends RuntimeException {
 
 	public TenantAccessDeniedException(String message) {
