@@ -42,3 +42,4 @@ docs/INTERVIEW_QUESTIONS.md
 ### Claude Code instructions (private) ###
 CLAUDE.md
 docs/SPEC.md
+requests.http

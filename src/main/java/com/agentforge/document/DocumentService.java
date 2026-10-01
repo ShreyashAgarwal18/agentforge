@@ -13,6 +13,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,7 +40,12 @@ public class DocumentService {
 	}
 
 	public DocumentResponse uploadDocument(MultipartFile file) {
-		String filename = file.getOriginalFilename();
+		return uploadDocument(file.getOriginalFilename(), file.getResource());
+	}
+
+	// Core logic, independent of MultipartFile, so non-HTTP callers (the demo seeder) go through
+	// the exact same validation and ETL as a real upload, not a parallel bypass path
+	public DocumentResponse uploadDocument(String filename, Resource resource) {
 		validateFileType(filename);
 
 		UUID tenantId = tenantContext.tenantId();
@@ -50,7 +56,7 @@ public class DocumentService {
 		documentRepository.save(document);
 
 		try {
-			List<org.springframework.ai.document.Document> chunks = readAndSplit(file);
+			List<org.springframework.ai.document.Document> chunks = readAndSplit(resource);
 
 			if (chunks.isEmpty()) {
 				document.markFailed("No extractable text found.");
@@ -96,8 +102,8 @@ public class DocumentService {
 		return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
 	}
 
-	private List<org.springframework.ai.document.Document> readAndSplit(MultipartFile file) {
-		TikaDocumentReader reader = new TikaDocumentReader(file.getResource());
+	private List<org.springframework.ai.document.Document> readAndSplit(Resource resource) {
+		TikaDocumentReader reader = new TikaDocumentReader(resource);
 		List<org.springframework.ai.document.Document> pages = reader.get();
 		TokenTextSplitter splitter = TokenTextSplitter.builder().withChunkSize(chunkSize).build();
 		return splitter.split(pages);
