@@ -46,6 +46,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 	}
 
+	@ExceptionHandler(SessionNotFoundException.class)
+	public ProblemDetail handleSessionNotFound(SessionNotFoundException ex) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
 	// Fallback for a race between a service's existsBy... check and its insert (two identical requests at once)
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {

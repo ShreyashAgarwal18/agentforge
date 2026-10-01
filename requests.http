@@ -1,0 +1,134 @@
+### AgentForge - real end-to-end run (real Gemini, real Postgres/PgVector)
+### Requires: docker compose up -d, ./mvnw spring-boot:run, and a real GEMINI_API_KEY in .env
+### VS Code: install the "REST Client" extension, then click "Send Request" above each block in order.
+
+@baseUrl = http://localhost:8080
+
+### 1. Platform admin logs in (seeded at startup)
+# @name platformAdminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@agentforge.local",
+  "password": "{{$dotenv AGENTFORGE_ADMIN_PASSWORD}}"
+}
+
+###
+
+@platformAdminToken = {{platformAdminLogin.response.body.$.accessToken}}
+
+### 2. Platform admin creates a tenant + its first TENANT_ADMIN
+# @name createTenant
+POST {{baseUrl}}/api/platform/tenants
+Authorization: Bearer {{platformAdminToken}}
+Content-Type: application/json
+
+{
+  "name": "Sunny Side Cake Shop",
+  "slug": "sunny-side-cake-shop",
+  "systemPrompt": "You are the friendly assistant for a small cake shop.",
+  "tone": "warm and welcoming",
+  "adminEmail": "admin@sunnyside.test",
+  "adminPassword": "tenant-admin-password"
+}
+
+###
+
+@tenantId = {{createTenant.response.body.$.id}}
+
+### 3. Tenant admin logs in
+# @name tenantAdminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@sunnyside.test",
+  "password": "tenant-admin-password"
+}
+
+###
+
+@tenantAdminToken = {{tenantAdminLogin.response.body.$.accessToken}}
+
+### 4. Tenant admin uploads the sample FAQ document
+# @name uploadDocument
+POST {{baseUrl}}/api/documents
+Authorization: Bearer {{tenantAdminToken}}
+Content-Type: multipart/form-data; boundary=----AgentForgeBoundary
+
+------AgentForgeBoundary
+Content-Disposition: form-data; name="file"; filename="cake-shop-faq.txt"
+Content-Type: text/plain
+
+< ./samples/cake-shop-faq.txt
+------AgentForgeBoundary--
+
+### 5. Tenant admin creates an end user
+# @name createEndUser
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{tenantAdminToken}}
+Content-Type: application/json
+
+{
+  "email": "customer@sunnyside.test",
+  "password": "end-user-password"
+}
+
+### 6. End user logs in
+# @name endUserLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "customer@sunnyside.test",
+  "password": "end-user-password"
+}
+
+###
+
+@endUserToken = {{endUserLogin.response.body.$.accessToken}}
+
+### 7. End user creates a chat session
+# @name createSession
+POST {{baseUrl}}/api/sessions
+Authorization: Bearer {{endUserToken}}
+Content-Type: application/json
+
+{
+  "title": "Cake questions"
+}
+
+###
+
+@sessionId = {{createSession.response.body.$.id}}
+
+### 8. Ask a question the document answers directly
+# @name askAboutSignatureCake
+POST {{baseUrl}}/api/sessions/{{sessionId}}/messages
+Authorization: Bearer {{endUserToken}}
+Content-Type: application/json
+
+{
+  "message": "What is your signature product and how much does it cost?"
+}
+
+### 9. Follow-up that depends on memory ("it" = the signature cake from the previous answer)
+# @name askFollowUpDelivery
+POST {{baseUrl}}/api/sessions/{{sessionId}}/messages
+Authorization: Bearer {{endUserToken}}
+Content-Type: application/json
+
+{
+  "message": "Can you deliver it to my house?"
+}
+
+### 10. Ask something NOT in the document - should say it doesn't have that information
+# @name askUnknown
+POST {{baseUrl}}/api/sessions/{{sessionId}}/messages
+Authorization: Bearer {{endUserToken}}
+Content-Type: application/json
+
+{
+  "message": "Do you sell birthday balloons?"
+}
