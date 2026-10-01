@@ -1,5 +1,7 @@
 package com.agentforge.chat;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -54,34 +56,51 @@ class ChatSessionOwnershipTest {
 	private TestRestTemplate restTemplate;
 
 	@Test
-	void anotherUsersSessionReturns404() {
+	void anotherUsersSessionReturns404OnDelete() {
+		TwoUserSetup setup = setUpTwoUsersAndSessionOwnedByA("diner");
+
+		// Same tenant, different user - must not be able to touch user A's session
+		ResponseEntity<String> deleteAttempt = restTemplate.exchange(url("/api/sessions/" + setup.sessionId()),
+				HttpMethod.DELETE, authorized(null, setup.userBToken()), String.class);
+		assertThat(deleteAttempt.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	// Proves the ownership check runs before the stream starts: if it ran inside the reactive
+	// chain instead, the response would start as 200 with an empty/failed SSE body, not a clean 404
+	@Test
+	void anotherUsersSessionReturns404ImmediatelyOnStream() {
+		TwoUserSetup setup = setUpTwoUsersAndSessionOwnedByA("bistro");
+
+		ResponseEntity<String> streamAttempt = restTemplate.exchange(
+				url("/api/sessions/" + setup.sessionId() + "/messages/stream"), HttpMethod.POST,
+				authorized(new SendMessageRequest("hello"), setup.userBToken()), String.class);
+		assertThat(streamAttempt.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+	}
+
+	private TwoUserSetup setUpTwoUsersAndSessionOwnedByA(String slug) {
 		String platformAdminToken = login("admin@agentforge.local", "test-admin-password");
 
 		restTemplate.exchange(url("/api/platform/tenants"), HttpMethod.POST,
-				authorized(new CreateTenantRequest("Diner", "diner", null, null, "admin@diner.test",
+				authorized(new CreateTenantRequest(slug, slug, null, null, "admin@" + slug + ".test",
 						"tenant-admin-password"), platformAdminToken), Void.class);
-		String tenantAdminToken = login("admin@diner.test", "tenant-admin-password");
+		String tenantAdminToken = login("admin@" + slug + ".test", "tenant-admin-password");
 
 		restTemplate.exchange(url("/api/users"), HttpMethod.POST,
-				authorized(new CreateUserRequest("user-a@diner.test", "user-a-password"), tenantAdminToken),
+				authorized(new CreateUserRequest("user-a@" + slug + ".test", "user-a-password"), tenantAdminToken),
 				Void.class);
 		restTemplate.exchange(url("/api/users"), HttpMethod.POST,
-				authorized(new CreateUserRequest("user-b@diner.test", "user-b-password"), tenantAdminToken),
+				authorized(new CreateUserRequest("user-b@" + slug + ".test", "user-b-password"), tenantAdminToken),
 				Void.class);
 
-		String userAToken = login("user-a@diner.test", "user-a-password");
-		String userBToken = login("user-b@diner.test", "user-b-password");
+		String userAToken = login("user-a@" + slug + ".test", "user-a-password");
+		String userBToken = login("user-b@" + slug + ".test", "user-b-password");
 
 		ResponseEntity<ChatSessionResponse> sessionResponse = restTemplate.exchange(url("/api/sessions"),
 				HttpMethod.POST, authorized(new CreateChatSessionRequest("User A's session"), userAToken),
 				ChatSessionResponse.class);
 		assertThat(sessionResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-		// Same tenant, different user - must not be able to touch user A's session
-		ResponseEntity<String> deleteAttempt = restTemplate.exchange(
-				url("/api/sessions/" + sessionResponse.getBody().id()), HttpMethod.DELETE,
-				authorized(null, userBToken), String.class);
-		assertThat(deleteAttempt.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		return new TwoUserSetup(sessionResponse.getBody().id(), userAToken, userBToken);
 	}
 
 	private String login(String email, String password) {
@@ -100,6 +119,9 @@ class ChatSessionOwnershipTest {
 
 	private String url(String path) {
 		return "http://localhost:" + port + path;
+	}
+
+	private record TwoUserSetup(UUID sessionId, String userAToken, String userBToken) {
 	}
 
 }

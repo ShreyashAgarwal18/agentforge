@@ -132,3 +132,14 @@ Content-Type: application/json
 {
   "message": "Do you sell birthday balloons?"
 }
+
+### 11. Same question, but streamed (SSE) - REST Client shows tokens as they arrive
+# @name askStreaming
+POST {{baseUrl}}/api/sessions/{{sessionId}}/messages/stream
+Authorization: Bearer {{endUserToken}}
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "Tell me about your delivery area in one sentence."
+}

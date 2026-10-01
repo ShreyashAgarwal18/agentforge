@@ -6,6 +6,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/api/sessions")
@@ -44,10 +46,16 @@ public class ChatSessionController {
 		chatSessionService.deleteSession(id);
 	}
 
-	// Permanent synchronous endpoint; Task 8 adds a separate /messages/stream route for SSE
+	// Permanent synchronous endpoint; separate from the SSE route below
 	@PostMapping("/{id}/messages")
 	public SendMessageResponse sendMessage(@PathVariable UUID id, @Valid @RequestBody SendMessageRequest request) {
 		return new SendMessageResponse(chatService.sendMessage(id, request.message()));
 	}
 
+	@PostMapping(value = "/{id}/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Flux<String> streamMessage(@PathVariable UUID id, @Valid @RequestBody SendMessageRequest request) {
+		return chatService.streamMessage(id, request.message());
+	}
+
 }
+ 
